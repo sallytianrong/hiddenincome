@@ -9,7 +9,7 @@
 % probability vector (see SL exercise 20.4 and Karaivanov's Matlab code for
 % moral hazard).
 
-%function [w0, w_feasible, P, nfeas, X_all] = ic_sharingrule(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw)
+%function [w0, w_feasible, P, nfeas, X_all, ec1, ec2, eQ, eu1, eu2] = ic_sharingrule(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw)
 
 clear all; close all; clc;
 
@@ -258,8 +258,8 @@ end
 social_planner = alpha.*P + (1-alpha).*w_feasible;
 [w0, w0_index] = max(social_planner);
 
-%
 
+%{
 %% plot P function
 figure;
 plot(w_feasible,P);
@@ -273,7 +273,7 @@ for i = 1:length(w_feasible)
     disp('———————————————————')
     disp([yy1(xp)', yy2(xp)', cc1(xp)', cc2(xp)', QQ(xp)', ww(xp)', X_all(xp,i)]);
 end
-
+%}
 
 %% Calculate transition probabilities
 % for each promised utility value (this period)
@@ -306,6 +306,36 @@ for i = 1:nfeas
     Qcdf(:,i) = cumsum(pi_q);
 end
 
+%% Expected consumption
+ec1 = zeros(n,n,nfeas);
+ec2 = zeros(n,n,nfeas);
+eQ = zeros(n,n,nfeas);
+eu1 = zeros(n,n,nfeas);
+eu2 = zeros(n,n,nfeas);
+% for each continuation value
+for k = 1:nfeas
+    % for each income realization of agent 1
+    for i = 1:n
+        % for each income realization of agent 2
+        for j = 1:n
+            % extract the relevant probability vector
+            index = (yy1 == y1_grid(i) & yy2 == y2_grid(j));
+            epi = X_all(index,k);
+            % expected private consumption of agent 1
+            ec1(i,j,k) = cc1(index)*epi;
+            % expected private consumption of agent 2
+            ec2(i,j,k) = cc2(index)*epi;
+            % expected public consumption
+            eQ(i,j,k) = QQ(index)*epi;
+            % expected utility of agent 1
+            eu1(i,j,k) = u1(cc1(index),QQ(index))*epi;
+            % expected utility of agent 2
+            eu2(i,j,k) = u2(cc2(index),QQ(index))*epi;
+        end
+    end
+end
+
+%
 %% Stationary distribution of Markov chain
 % find the eigenvectors and eigenvalues
 [V,D] = eig(w_trans');

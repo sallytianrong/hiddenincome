@@ -4,7 +4,7 @@ function [mean_MPP1, mean_MPP2, mean_MPC1_inc1, mean_MPC1_inc2, mean_MPC2_inc1, 
     infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta1,beta2,delta1,delta2)
 %}
 
-function [z1max, z2max] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,delta1,delta2,price,n)
+function [z1max, z2max, c1, c2, Q, u1_pol, u2_pol] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,delta1,delta2,price,n,pi)
 
 %% Infinite game representation of income hiding %%
 % Two agents, both agents' income are stochastic. is stochastic. Both agents
@@ -43,15 +43,16 @@ beta1 = 0.9; beta2 = 0.9;
 
 % Cost of hiding
 delta1 = 0.8; delta2 = 0.8;
+
+% Discretize income space
+n = 10;
+
+% probability of punishment
+pi = @(y, haty) ((y-haty)./y).^2;
+
 %}
 
-%% functional forms
-% probability of punishment (logit)
-%prob = @(p) (p~=0).*0.1.*exp(p)./(1+exp(p));
-%prob_prime = @(p) exp(p)./((1+exp(p)).^2);
-% plot probability
-%test = linspace(0,y1max,100);
-%plot(test, prob(test))
+%% Set up
 
 % utility
 gamma = (1-a1).*alpha + (1-a2).*(1-alpha);
@@ -61,7 +62,6 @@ u1 = @(y,z1,z2) a1.*log(alpha.*a1.*(z1+z2) + delta1.*(y-z1)) + (1-a1).*log(gamma
 u2 = @(y,z1,z2) a2.*log((1-alpha).*a2.*(z1+z2) + delta2.*(y-z2)) + (1-a2).*log(gamma.*(z1+z2)./price);
 
 % discretize income space
-%n = 10;
 income1 = linspace(y1min,y1max,n);
 income2 = linspace(y2min,y2max,n);
 
@@ -96,7 +96,7 @@ while diff>error
         % current period utility
         u1_test = u1(income1(i),z_test,income2(j));
         % continuation value
-        V_test = u1_test + beta.*vaut1.*((income1(i)-z_test)./income1(i)).^2 + beta.*(1-((income1(i)-z_test)./income1(i)).^2).*V_exp1;
+        V_test = u1_test + beta.*vaut1.*pi(income1(i),z_test) + beta.*(1-pi(income1(i),z_test)).*V_exp1;
         % choose reported income to maxize continuation value
         [maxv1(i,j), maxzind1(i,j)] = max(V_test);
         end
@@ -128,7 +128,7 @@ while diff>error
         % current period utility
         u2_test = u2(income2(i),income1(j),z_test);
         % continuation value
-        V_test = u2_test + beta.*vaut2.*((income2(i)-z_test)./income2(i)).^2 + beta.*(1-((income2(i)-z_test)./income2(i)).^2).*V_exp2;
+        V_test = u2_test + beta.*vaut2.*pi(income2(i),z_test) + beta.*(1-pi(income2(i),z_test)).*V_exp2;
         % choose reported income to maximize continuation value
         [maxv2(i,j), maxzind2(i,j)] = max(V_test);
         end
@@ -178,11 +178,6 @@ Q = gamma.*(z1max + z2max);
 % utility
 u1_pol = u1(income1_rep,z1max,z2max);
 u2_pol = u2(income2_rep,z1max,z2max);
-
-% no hiding
-c1_fb = a1.*alpha.*(income1_rep + income2_rep);
-c2_fb = a2.*(1-alpha).*(income1_rep + income2_rep);
-Q_fb = gamma.*(income1_rep + income2_rep);
 
 %{
 %plot
@@ -265,7 +260,6 @@ for i = 1:n
     MPC2_inc2_fb(i) = mean((c2_fb(i,2:end) - c2_fb(i,1:end-1))./(income2(2:end) - income2(1:end-1)));
     MPCQ_inc1_fb(i) = mean((Q_fb(2:end,i) - Q_fb(1:end-1,i))./(income1(2:end) - income1(1:end-1))');
     MPCQ_inc2_fb(i) = mean((Q_fb(i,2:end) - Q_fb(i,1:end-1))./(income2(2:end) - income2(1:end-1)));
-
 end
 
 % mean marginal propensities

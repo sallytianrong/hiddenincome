@@ -9,7 +9,7 @@
 % probability vector (see SL exercise 20.4 and Karaivanov's Matlab code for
 % moral hazard).
 
-function [w0, w_feasible, P, nfeas, X_all] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw,delta1,delta2)
+function [w0, w_feasible, P, nfeas, X_all, ec1, ec2, eQ, eu1, eu2] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw,delta1,delta2,punish)
 
 %clear all; close all; clc;
 
@@ -33,8 +33,12 @@ y2min = 1;
 y2max = 5;
 % Pareto weight
 alpha = 0.5;
+% cost of hiding
 delta1 = 0.95;
 delta2 = 0.95;
+
+% probability of punishment
+punish = @(y, haty) ((y-haty)./y).^2;
 
 %}
 
@@ -109,7 +113,7 @@ while diff_feas>error
     lambda_lower = zeros(nfeas*ns*n*n,nfeas);
     lambda_upper = zeros(nfeas*ns*n*n,nfeas);
     lambda_eqlin = zeros(n*n+2,nfeas);
-    lambda_ineqlin = zeros(2*n*(n-1),nfeas);
+    lambda_ineqlin = zeros(n*n*(n-1),nfeas);
             
     %% Constraints (that do not depend on the P function)
             % Upper bounds and lower bounds (between 0 and 1)
@@ -136,20 +140,20 @@ while diff_feas>error
             
             % incentive compatibility for agent 2
             counter = 0;
-            Aineq1 = zeros(n*(n-1),n*n*ns*nfeas);
+            Aineq1 = zeros((n-1)*n*n/2,n*n*ns*nfeas);
             for i = 2:n % each state of the world of agent 2
                 for j = 1:i-1 % each alternate state of the world
                     for l = 1:n % each state of the world of agent 1
                         counter = counter+1;
                         yi_index = (yy2 == y2_grid(i) & yy1 == y1_grid(l));
                         yj_index = (yy2 == y2_grid(j) & yy1 == y1_grid(l));
-                        pi = 0.02;
                         Aineq1(counter,yi_index) = -(u2(cc2(yi_index),QQ(yi_index))+ beta.*ww(yi_index))./(prob_y2(i).*prob_y1(l));
-                        Aineq1(counter,yj_index) = (u2(cc2(yj_index)+delta2.*(y2_grid(i)-y2_grid(j)),QQ(yj_index))+ beta.*pi.*w_aut + beta.*(1-pi).*ww(yj_index))./(prob_y2(j).*prob_y1(l));
+                        Aineq1(counter,yj_index) = (u2(cc2(yj_index)+delta2.*(y2_grid(i)-y2_grid(j)),QQ(yj_index))+ beta.*punish(y2_grid(i),y2_grid(j)).*w_aut...
+                            + beta.*(1-punish(y2_grid(i),y2_grid(j))).*ww(yj_index))./(prob_y2(j).*prob_y1(l));
                     end
                 end
             end
-            bineq1 = zeros(1,(n-1)*(n-1)*n);
+            bineq1 = zeros((n-1)*n*n/2,1);
             
             % conditional probabilities add up to unconditional probabilities of y
             Aeq3 = kron(eye(n*n),ones(1,nfeas*ns));
@@ -167,20 +171,20 @@ while diff_feas>error
             %% Constraints that depend on v and P(v)
             % incentive compatibility for agent 2
             counter = 0;
-            Aineq2 = zeros(n*(n-1),n*n*ns*nfeas);
+            Aineq2 = zeros((n-1)*n*n/2,n*n*ns*nfeas);
             for i = 2:n % each state of the world of agent 1
                 for j = 1:i-1 % each alternate state of the world
                     for l = 1:n % each state of the world of agent 2
                         counter = counter+1;
                         yi_index = (yy1 == y1_grid(i) & yy2 == y2_grid(l));
                         yj_index = (yy1 == y1_grid(j) & yy2 == y2_grid(l));
-                        pi = 0.02;
                         Aineq2(counter,yi_index) = -(u1(cc1(yi_index),QQ(yi_index))+ beta.*pp(yi_index))./(prob_y1(i).*prob_y2(l));
-                        Aineq2(counter,yj_index) = (u1(cc1(yj_index)+delta1.*(y1_grid(i)-y1_grid(j)),QQ(yj_index))+ beta.*pi.*P_aut + beta.*(1-pi).*pp(yj_index))./(prob_y1(j).*prob_y2(l));
+                        Aineq2(counter,yj_index) = (u1(cc1(yj_index)+delta1.*(y1_grid(i)-y1_grid(j)),QQ(yj_index))+ beta.*punish(y1_grid(i),y1_grid(j)).*P_aut...
+                            + beta.*(1-punish(y1_grid(i),y1_grid(j))).*pp(yj_index))./(prob_y1(j).*prob_y2(l));
                     end
                 end
             end
-            bineq2 = zeros(1,(n-1)*(n-1)*n);
+            bineq2 = zeros((n-1)*n*n/2,1);
             
             % promise keeping constraint (2)
             Aeq2 = u2(cc2, QQ) + beta.*ww;
@@ -257,6 +261,35 @@ end
 % Maximize social planner's expected utility at period 0
 social_planner = alpha.*P + (1-alpha).*w_feasible;
 [w0, w0_index] = max(social_planner);
+
+%% Expected consumption
+ec1 = zeros(n,n,nfeas);
+ec2 = zeros(n,n,nfeas);
+eQ = zeros(n,n,nfeas);
+eu1 = zeros(n,n,nfeas);
+eu2 = zeros(n,n,nfeas);
+% for each continuation value
+for k = 1:nfeas
+    % for each income realization of agent 1
+    for i = 1:n
+        % for each income realization of agent 2
+        for j = 1:n
+            % extract the relevant probability vector
+            index = (yy1 == y1_grid(i) & yy2 == y2_grid(j));
+            epi = X_all(index,k);
+            % expected private consumption of agent 1
+            ec1(i,j,k) = cc1(index)*epi;
+            % expected private consumption of agent 2
+            ec2(i,j,k) = cc2(index)*epi;
+            % expected public consumption
+            eQ(i,j,k) = QQ(index)*epi;
+            % expected utility of agent 1
+            eu1(i,j,k) = u1(cc1(index),QQ(index))*epi;
+            % expected utility of agent 2
+            eu2(i,j,k) = u2(cc2(index),QQ(index))*epi;
+        end
+    end
+end
 
 %{
 

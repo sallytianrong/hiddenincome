@@ -9,12 +9,12 @@
 % probability vector (see SL exercise 20.4 and Karaivanov's Matlab code for
 % moral hazard).
 
-%function [w0, w_feasible, P, nfeas, X_all] = ic_sharingrule(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw)
+function [w0, w_feasible, P, nfeas, X_all] = ic_sharingrule(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw)
 
-clear all; close all; clc;
+%clear all; close all; clc;
 
 %% Parameters set-up
-%
+%{
 % discounting factor
 beta = 0.94;
 % preference of private consumption
@@ -25,7 +25,7 @@ price = 1;
 % number of gridpoints
 n = 2;
 ns = 25;
-nw = 48;
+nw = 40;
 % income processes
 y1min = 1;
 y1max = 5;
@@ -258,8 +258,8 @@ end
 social_planner = alpha.*P + (1-alpha).*w_feasible;
 [w0, w0_index] = max(social_planner);
 
-%
 
+%{
 %% plot P function
 figure;
 plot(w_feasible,P);
@@ -273,7 +273,7 @@ for i = 1:length(w_feasible)
     disp('———————————————————')
     disp([yy1(xp)', yy2(xp)', cc1(xp)', cc2(xp)', QQ(xp)', ww(xp)', X_all(xp,i)]);
 end
-
+%}
 
 %% Calculate transition probabilities
 % for each promised utility value (this period)
@@ -293,6 +293,28 @@ for i = 1:nfeas
         index = (ww == w_feasible(j));
         w_trans(i,j) = sum(pi(index));
     end
+    % consumption cdf: first sort the probabiilities according to magnitude
+    % (pdf), then add up to get cdf
+    % private consumption of agent 1
+    pi_cons1 = pi(cons_index1);
+    conscdf1(:,i) = cumsum(pi_cons1);
+    % private consumption of agent 2
+    pi_cons2 = pi(cons_index2);
+    conscdf2(:,i) = cumsum(pi_cons2);
+    % public good consumption
+    pi_q = pi(q_index);
+    Qcdf(:,i) = cumsum(pi_q);
+end
+
+% for each continuation value
+for k = 1:nfeas
+    % for each income realization of agent 1
+    for i = 1:n
+        % for each income realization of agent 2
+        for j = 1:n
+            % extract the 
+            index = (yy1 == y
+            pi = X_all(:,i);
     % consumption cdf: first sort the probabiilities according to magnitude
     % (pdf), then add up to get cdf
     % private consumption of agent 1
