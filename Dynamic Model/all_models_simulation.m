@@ -70,7 +70,7 @@ QQ = (yy1+yy2-cc1-cc2)./price;
 %% Hiding
 
 % load workspace
-%load ('ic.mat');
+load ('ic.mat');
 
 % Hiding model solves much faster so can allow more nodes 
 n_hiding = 100;
@@ -84,15 +84,15 @@ for i = 1:n
 end
 
 % hiding
-[z1max_bl, z2max_bl, c1_hiding, c2_hiding, Q_hiding, u1_hiding, u2_hiding] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,delta1,delta2,price,n,punish);
+[z1max_bl, z2max_bl, c1_hiding, c2_hiding, Q_hiding, u1_hiding, u2_hiding] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,delta1,delta2,price,n_hiding,punish);
 
 %% Policy functions
 % Private consumption of agent 1
-mpc1_aut = a1;
-mpc1_fb = a1.*alpha;
-mpc1_hide_lowy2 = mean((c1_hiding(2:end,1) - c1_hiding(1:end-1,1))./(income1_hiding(2:end) - income1_hiding(1:end-1))');
-mpc1_hide_highy2 = mean((c1_hiding(2:end,100) - c1_hiding(1:end-1,100))./(income1_hiding(2:end) - income1_hiding(1:end-1))');
-mpc1_ic_lowy2loww = (ec1_ic(2:end,1,1) - ec1_ic(1:end-1,1,1))./(income1(2:end) - income1(1:end-1));
+%mpc1_aut = a1;
+%mpc1_fb = a1.*alpha;
+%mpc1_hide_lowy2 = mean((c1_hiding(2:end,1) - c1_hiding(1:end-1,1))./(income1_hiding(2:end) - income1_hiding(1:end-1))');
+%mpc1_hide_highy2 = mean((c1_hiding(2:end,100) - c1_hiding(1:end-1,100))./(income1_hiding(2:end) - income1_hiding(1:end-1))');
+%mpc1_ic_lowy2loww = (ec1_ic(2:end,1,1) - ec1_ic(1:end-1,1,1))./(income1(2:end) - income1(1:end-1));
 
 %% Simulation
 rng(8);
@@ -107,8 +107,8 @@ T = 500;
 % Simulate income processes
 ind_path1 = randi([1 n],T,1);
 ind_path2 = randi([1 n],T,1);
-%ind_path1_hiding = map(ind_path1);
-%ind_path2_hiding = map(ind_path2);
+ind_path1_hiding = map(ind_path1);
+ind_path2_hiding = map(ind_path2);
 y1_path = income1(ind_path1);
 y2_path = income2(ind_path2);
 
@@ -146,8 +146,8 @@ eq_fb = 0.5.*eu1_fb + 0.5.*eu2_fb;
 z1_path = zeros(1,T);
 z2_path = zeros(1,T);
 for t = 1:T
-    z1_path(t) = z1max_bl(ind_path1(t),ind_path2(t));
-    z2_path(t) = z2max_bl(ind_path1(t),ind_path2(t));
+    z1_path(t) = z1max_bl(ind_path1_hiding(t),ind_path2_hiding(t));
+    z2_path(t) = z2max_bl(ind_path1_hiding(t),ind_path2_hiding(t));
 end
 
 % simulate consumption and utility stream
@@ -489,14 +489,14 @@ title('Var(Q)')
 
 toc
 
-%{
+
 %% Utility as a function of cost of hiding
 
 % Hiding
 z1max = zeros(n_hiding,n_hiding,10);
 z2max = zeros(n_hiding,n_hiding,10);
 for i = 1:10
-    [z1max(:,:,i), z2max(:,:,i)] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,deltavar(i),deltavar(i),price,n_hiding);
+    [z1max(:,:,i), z2max(:,:,i)] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,deltavar(i),deltavar(i),price,n_hiding,punish);
 end
 
 eu1_hide = zeros(1,10);
@@ -556,7 +556,7 @@ end
 %%
 figure;
 subplot(2,2,1)
-plot(deltavar, eu1_hide, deltavar, repmat(P(9),1,10), deltavar, repmat(eu1_fb,1,10))
+plot(deltavar, eu1_hide, deltavar, repmat(P(2),1,10), deltavar, repmat(eu1_fb,1,10))
 legend('Hiding','IC','First Best','Location','Southwest')
 title('Agent 1 Expected Utility')
 subplot(2,2,2)

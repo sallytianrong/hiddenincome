@@ -5,6 +5,8 @@
 
 clear all; close all; clc;
 
+tic
+
 %% Parameters
 % Preference of private good versus public good
 a1 = 0.5; a2 = 0.5;
@@ -23,12 +25,12 @@ price = 1;
 beta = 0.94;
 
 % discretize income space
-n = 2;
+n = 10;
 income1 = linspace(y1min,y1max,n);
 income2 = linspace(y2min,y2max,n);
 
 % discretize state space for IC
-ns = 10; nw = 20;
+ns = 20; nw = 20;
 
 % utility function
 u1 = @(x,Q) a1.*log(x) + (1-a1).*log(Q);
@@ -43,12 +45,15 @@ uaut2 = @(y) a2.*log(a2.*y)+(1-a2).*log((1-a2).*y);
 delta1 = 0.95; delta2 = 0.95;
 deltavar = linspace(0.1,0.99,10);
 
+% probability of punishment
+punish = @(y, haty) ((y-haty)./y).^2;
+
 %% Solve incentive compatible
-[w0, w_feasible, P, nfeas, X_all, ec1_ic, ec2_ic, eQ_ic, eu1_ic, eu2_ic] = ic_sharingrule(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw);
+[w0, w_feasible, P, nfeas, X_all, ec1_ic, ec2_ic, eQ_ic, eu1_ic, eu2_ic] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw,delta1,delta2,punish);
 
 % save workspace because this takes a long time to run! it will be easier
 % if I don't need to run it every time
-%save ('ic.mat');
+save ('ic.mat');
 
 % kronecker products
 y1_grid = linspace(y1min,y1max,n);
@@ -65,7 +70,7 @@ QQ = (yy1+yy2-cc1-cc2)./price;
 %% Hiding
 
 % load workspace
-%load ('ic.mat');
+load ('ic.mat');
 
 % Hiding model solves much faster so can allow more nodes 
 n_hiding = 100;
@@ -79,15 +84,15 @@ for i = 1:n
 end
 
 % hiding
-[z1max_bl, z2max_bl, c1_hiding, c2_hiding, Q_hiding, u1_hiding, u2_hiding] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,delta1,delta2,price,n_hiding);
+[z1max_bl, z2max_bl, c1_hiding, c2_hiding, Q_hiding, u1_hiding, u2_hiding] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,delta1,delta2,price,n_hiding,punish);
 
 %% Policy functions
 % Private consumption of agent 1
-mpc1_aut = a1;
-mpc1_fb = a1.*alpha;
-mpc1_hide_lowy2 = mean((c1_hiding(2:end,1) - c1_hiding(1:end-1,1))./(income1_hiding(2:end) - income1_hiding(1:end-1))');
-mpc1_hide_highy2 = mean((c1_hiding(2:end,100) - c1_hiding(1:end-1,100))./(income1_hiding(2:end) - income1_hiding(1:end-1))');
-mpc1_ic_lowy2loww = (ec1_ic(2:end,1,1) - ec1_ic(1:end-1,1,1))./(income1(2:end) - income1(1:end-1))
+%mpc1_aut = a1;
+%mpc1_fb = a1.*alpha;
+%mpc1_hide_lowy2 = mean((c1_hiding(2:end,1) - c1_hiding(1:end-1,1))./(income1_hiding(2:end) - income1_hiding(1:end-1))');
+%mpc1_hide_highy2 = mean((c1_hiding(2:end,100) - c1_hiding(1:end-1,100))./(income1_hiding(2:end) - income1_hiding(1:end-1))');
+%mpc1_ic_lowy2loww = (ec1_ic(2:end,1,1) - ec1_ic(1:end-1,1,1))./(income1(2:end) - income1(1:end-1));
 
 %% Simulation
 rng(8);
@@ -275,11 +280,13 @@ var_u2_ic = var(u2_ic_path);
 %% Simulated Policy Functions
 for i = 1:n
     for j = 1:n
-        y1index = ind1
-[y1_path_sorted, y1index] = sort(y1_path);
-[y2_path_sorted, y2index] = sort(y2_path);
-c1_hide_emp1 = c1_hide_path(y1index);
-mpc1_hide_y1_emp = [ones(T,1) y1_path_sorted']\c1_hide_emp1';
+        y1index = (ind_path1 == i);
+        y2index = (ind_path2 == j);
+        c1_hide_emp(i,j) = mean(c1_hide_path(y1index & y2index));
+        c2_hide_emp(i,j) = mean(c2_hide_path(y1index & y2index));
+        Q_hide_emp(i,j) = mean(c1_hide_path(y1index & y2index));
+    end
+end
 
 %% Create Simulation Graph
 figure;
@@ -480,15 +487,16 @@ b.CData(2,:) = [0.24 0.52 0.66];
 b.CData(3,:) = [0.27 0.8 0.81];
 title('Var(Q)')
 
+toc
 
-%{
+
 %% Utility as a function of cost of hiding
 
 % Hiding
 z1max = zeros(n_hiding,n_hiding,10);
 z2max = zeros(n_hiding,n_hiding,10);
 for i = 1:10
-    [z1max(:,:,i), z2max(:,:,i)] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,deltavar(i),deltavar(i),price,n_hiding);
+    [z1max(:,:,i), z2max(:,:,i)] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,deltavar(i),deltavar(i),price,n_hiding,punish);
 end
 
 eu1_hide = zeros(1,10);
@@ -548,7 +556,7 @@ end
 %%
 figure;
 subplot(2,2,1)
-plot(deltavar, eu1_hide, deltavar, repmat(P(9),1,10), deltavar, repmat(eu1_fb,1,10))
+plot(deltavar, eu1_hide, deltavar, repmat(P(2),1,10), deltavar, repmat(eu1_fb,1,10))
 legend('Hiding','IC','First Best','Location','Southwest')
 title('Agent 1 Expected Utility')
 subplot(2,2,2)
