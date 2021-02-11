@@ -5,6 +5,8 @@
 
 clear all; close all; clc;
 
+tic
+
 %% Parameters
 % Preference of private good versus public good
 a1 = 0.5; a2 = 0.5;
@@ -23,12 +25,12 @@ price = 1;
 beta = 0.94;
 
 % discretize income space
-n = 5;
+n = 10;
 income1 = linspace(y1min,y1max,n);
 income2 = linspace(y2min,y2max,n);
 
 % discretize state space for IC
-ns = 10; nw = 20;
+ns = 20; nw = 20;
 
 % utility function
 u1 = @(x,Q) a1.*log(x) + (1-a1).*log(Q);
@@ -51,7 +53,7 @@ punish = @(y, haty) ((y-haty)./y).^2;
 
 % save workspace because this takes a long time to run! it will be easier
 % if I don't need to run it every time
-%save ('ic.mat');
+save ('ic.mat');
 
 % kronecker products
 y1_grid = linspace(y1min,y1max,n);
@@ -82,7 +84,7 @@ for i = 1:n
 end
 
 % hiding
-[z1max_bl, z2max_bl, c1_hiding, c2_hiding, Q_hiding, u1_hiding, u2_hiding] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,delta1,delta2,price,n,pi);
+[z1max_bl, z2max_bl, c1_hiding, c2_hiding, Q_hiding, u1_hiding, u2_hiding] = infinitegame_twosides(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,delta1,delta2,price,n,punish);
 
 %% Policy functions
 % Private consumption of agent 1
@@ -144,8 +146,8 @@ eq_fb = 0.5.*eu1_fb + 0.5.*eu2_fb;
 z1_path = zeros(1,T);
 z2_path = zeros(1,T);
 for t = 1:T
-    z1_path(t) = z1max_bl(ind_path1_hiding(t),ind_path2_hiding(t));
-    z2_path(t) = z2max_bl(ind_path1_hiding(t),ind_path2_hiding(t));
+    z1_path(t) = z1max_bl(ind_path1(t),ind_path2(t));
+    z2_path(t) = z2max_bl(ind_path1(t),ind_path2(t));
 end
 
 % simulate consumption and utility stream
@@ -485,6 +487,7 @@ b.CData(2,:) = [0.24 0.52 0.66];
 b.CData(3,:) = [0.27 0.8 0.81];
 title('Var(Q)')
 
+toc
 
 %{
 %% Utility as a function of cost of hiding
