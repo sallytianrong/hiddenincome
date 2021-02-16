@@ -12,11 +12,11 @@ tic
 a1 = 0.5; a2 = 0.5;
 
 % Two income processes: uniform discrete
-y1min = 1; y1max = 5;
-y2min = 1; y2max = 5;
+y1min = 2; y1max = 3;
+y2min = 2; y2max = 6;
 
 % Pareto weight
-alpha = 0.5;
+alpha = 0.3;
 
 % price
 price = 1;
@@ -25,7 +25,7 @@ price = 1;
 beta = 0.94;
 
 % discretize income space
-n = 10;
+n = 5;
 income1 = linspace(y1min,y1max,n);
 income2 = linspace(y2min,y2max,n);
 
@@ -49,7 +49,7 @@ deltavar = linspace(0.1,0.99,10);
 punish = @(y, haty) ((y-haty)./y).^2;
 
 %% Solve incentive compatible
-[w0, w_feasible, P, nfeas, X_all, ec1_ic, ec2_ic, eQ_ic, eu1_ic, eu2_ic] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw,delta1,delta2,punish);
+[w_feasible, P, nfeas, X_all, ec1_ic, ec2_ic, eQ_ic, eu1_ic, eu2_ic] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,beta,price,n,ns,nw,delta1,delta2,punish);
 
 % save workspace because this takes a long time to run! it will be easier
 % if I don't need to run it every time
@@ -101,8 +101,8 @@ rng(8);
 T = 500;
 
 % generate alternate income path
-%ind_path1 = repmat([1 2],1,T/2);
-%ind_path2 = repmat([2 1],1,T/2);
+%ind_path1 = repmat([1 3],1,T/2);
+%ind_path2 = repmat([3 1],1,T/2);
 
 % Simulate income processes
 ind_path1 = randi([1 n],T,1);
@@ -198,9 +198,10 @@ w_ic_path = zeros(1,T+1);
 w_index = zeros(1,T+1);
 s_path = zeros(1,T);
 
-% beginning w
+% Maximize social planner's expected utility at period 0
+social_planner = alpha.*P + (1-alpha).*w_feasible;
+[w0, w_index(1)] = max(social_planner);
 w_ic_path(1) = w0;
-[~, w_index(1)] = min(abs(w0-w_feasible));
 
 % in each period
 for t = 1:T
@@ -291,41 +292,34 @@ end
 %% Create Simulation Graph
 figure;
 
-subplot(2,5,1);
-plot(1:100,y1_path(1:100),1:100,y2_path(1:100));
+subplot(2,4,1);
+plot(1:50,y1_path(1:50),1:50,y2_path(1:50));
 title('Income')
 
-subplot(2,5,6);
-plot(1:100, y1_path(1:100)-z1_path(1:100), 1:100, y2_path(1:100)-z2_path(1:100));
+subplot(2,4,5);
+plot(1:50, y1_path(1:50)-z1_path(1:50), 1:50, y2_path(1:50)-z2_path(1:50));
 title('Hiding')
 
-subplot(2,5,2);
-plot(1:100,c1_aut_path(1:100),1:100,c1_fb_path(1:100),1:100,c1_hide_path(1:100),1:100,c1_ic_path(1:100));
+subplot(2,4,3);
+plot(1:50,c1_aut_path(1:50),1:50,c1_fb_path(1:50),1:50,c1_hide_path(1:50),1:50,c1_ic_path(1:50));
 title('C1')
 
-subplot(2,5,7);
-plot(1:100,c2_aut_path(1:100),1:100,c2_fb_path(1:100),1:100,c2_hide_path(1:100),1:100,c2_ic_path(1:100));
+subplot(2,4,7);
+plot(1:50,c2_aut_path(1:50),1:50,c2_fb_path(1:50),1:50,c2_hide_path(1:50),1:50,c2_ic_path(1:50));
 title('C2')
 
-subplot(2,5,3);
-plot(1:100,Q_aut_path(1:100),1:100,Q_fb_path(1:100),1:100,Q_hide_path(1:100),1:100,Q_ic_path(1:100));
+subplot(2,4,4);
+plot(1:50,Q_aut_path(1:50),1:50,Q_fb_path(1:50),1:50,Q_hide_path(1:50),1:50,Q_ic_path(1:50));
 title('Q')
+l=legend('Autarky / Agent 1','First Best / Agent 2','Hiding','IC')
+set(l, 'Position', [0.62 0.2 0.4 0.2])
 
-subplot(2,5,8);
-plot(1:100,s_aut_path(1:100),1:100,s_fb_path(1:100),1:100,s_hide_path(1:100),1:100,s_ic_path(1:100));
-title('Sharing Rule')
-
-subplot(2,5,5);
-plot(1:100,zeros(1,100),1:100,surplus_fb_path(1:100),1:100,surplus_hide_path(1:100),1:100,surplus_ic_path(1:100));
-title('Marital Surplus')
-legend('Autarky','First Best', 'Hiding', 'IC')
-
-subplot(2,5,4);
-plot(1:100,aut1_path(1:100),1:100,u1_fb_path(1:100),1:100,u1_hide_path(1:100),1:100,u1_ic_path(1:100));
+subplot(2,4,2);
+plot(1:50,aut1_path(1:50),1:50,u1_fb_path(1:50),1:50,u1_hide_path(1:50),1:50,u1_ic_path(1:50));
 title('Utility - Agent 1')
 
-subplot(2,5,9);
-plot(1:100,aut2_path(1:100),1:100,u2_fb_path(1:100),1:100,u2_hide_path(1:100),1:100,u2_ic_path(1:100));
+subplot(2,4,6);
+plot(1:50,aut2_path(1:50),1:50,u2_fb_path(1:50),1:50,u2_hide_path(1:50),1:50,u2_ic_path(1:50));
 title('Utility - Agent 2')
 
 %% Graph 2: normalize everything to be a share of first-best
@@ -373,6 +367,68 @@ subplot(2,3,6);
 plot(1:100,zeros(1,100),1:100,surplus_hide_path_normalized(1:100),1:100,surplus_ic_path_normalized(1:100));
 title('Marital Surplus')
 
+%% Presentation graph
+figure;
+
+c1_aut_path_normalized = c1_aut_path-c1_fb_path;
+c1_hide_path_normalized = c1_hide_path-c1_fb_path;
+c1_ic_path_normalized = c1_ic_path-c1_fb_path;
+subplot(1,3,1);
+plot(1:50,zeros(1,50),1:50,c1_ic_path_normalized(1:50),1:50,c1_aut_path_normalized(1:50),1:50,c1_hide_path_normalized(1:50));
+title('C1')
+
+c2_aut_path_normalized = c2_aut_path-c2_fb_path;
+c2_hide_path_normalized = c2_hide_path-c2_fb_path;
+c2_ic_path_normalized = c2_ic_path-c2_fb_path;
+subplot(1,3,2);
+plot(1:50,zeros(1,50),1:50,c2_ic_path_normalized(1:50),1:50,c2_aut_path_normalized(1:50),1:50,c2_hide_path_normalized(1:50));
+title('C2')
+
+Q_aut_path_normalized = Q_aut_path-Q_fb_path;
+Q_hide_path_normalized = Q_hide_path-Q_fb_path;
+Q_ic_path_normalized = Q_ic_path-Q_fb_path;
+subplot(1,3,3);
+plot(1:50,zeros(1,50),1:50,Q_ic_path_normalized(1:50),1:50,Q_aut_path_normalized(1:50),1:50,Q_hide_path_normalized(1:50));
+legend('First Best','IC','Autarky', 'Hiding')
+title('Q')
+
+%%
+figure;
+
+aut1_path_normalized = aut1_path-u1_fb_path;
+u1_hide_path_normalized = u1_hide_path-u1_fb_path;
+u1_ic_path_normalized = u1_ic_path-u1_fb_path;
+subplot(1,4,1);
+plot(1:50,zeros(1,50),1:50,u1_ic_path_normalized(1:50),1:50,aut1_path_normalized(1:50),1:50,u1_hide_path_normalized(1:50));
+title('Utility - Agent 1')
+ylim([-0.4 0.3]);
+
+aut2_path_normalized = aut2_path-u2_fb_path;
+u2_hide_path_normalized = u2_hide_path-u2_fb_path;
+u2_ic_path_normalized = u2_ic_path-u2_fb_path;
+subplot(1,4,2);
+plot(1:50,zeros(1,50),1:50,u2_ic_path_normalized(1:50),1:50,aut2_path_normalized(1:50),1:50,u2_hide_path_normalized(1:50));
+title('Utility - Agent 2')
+ylim([-0.4 0.3]);
+
+authh_path_normalized = (alpha.*aut1_path + (1-alpha).*aut2_path)-(alpha.*u1_fb_path + (1-alpha).*u2_fb_path);
+hidehh_path_normalized = (alpha.*u1_hide_path + (1-alpha).*u2_hide_path)-(alpha.*u1_fb_path + (1-alpha).*u2_fb_path);
+ichh_path_normalized = (alpha.*u1_ic_path + (1-alpha).*u2_ic_path)-(alpha.*u1_fb_path + (1-alpha).*u2_fb_path);
+
+subplot(1,4,3);
+plot(1:50,zeros(1,50),1:50,ichh_path_normalized(1:50),1:50,authh_path_normalized(1:50),1:50,hidehh_path_normalized(1:50));
+title('Household Utility (Pareto Weighted)')
+ylim([-0.4 0.1]);
+
+auteq_path_normalized = (0.5.*aut1_path + (1-0.5).*aut2_path)-(0.5.*u1_fb_path + (1-0.5).*u2_fb_path);
+hideeq_path_normalized = (0.5.*u1_hide_path + (1-0.5).*u2_hide_path)-(0.5.*u1_fb_path + (1-0.5).*u2_fb_path);
+iceq_path_normalized = (0.5.*u1_ic_path + (1-0.5).*u2_ic_path)-(0.5.*u1_fb_path + (1-0.5).*u2_fb_path);
+
+subplot(1,4,4);
+plot(1:50,zeros(1,50),1:50,iceq_path_normalized(1:50),1:50,auteq_path_normalized(1:50),1:50,hideeq_path_normalized(1:50));
+title('Household Utility (Equally Weighted)')
+legend('First Best','IC','Autarky', 'Hiding', 'Location', 'Southeast')
+ylim([-0.4 0.1]);
 
 %% Mean Graph
 figure;
@@ -433,6 +489,40 @@ b.CData(3,:) = [0.27 0.8 0.81];
 b.CData(4,:) = [0.67 0.93 0.85];
 title('Mean(Q)')
 
+%% Presentation graph
+figure;
+
+subplot(1,3,1);
+cat = categorical({'Agent 1','Agent 2'});
+cat = reordercats(cat,{'Agent 1','Agent 2'});
+b = bar(cat,[mean(y1_path) mean(y2_path)]);
+b.FaceColor = 'flat';
+b.CData(1,:) = [0.28 0.27 0.43];
+b.CData(2,:) = [0.24 0.52 0.66];
+title('Mean(Income)')
+
+subplot(1,3,2);
+cat = categorical({'Autarky','First Best','Hiding','IC'});
+cat = reordercats(cat,{'Autarky','First Best','Hiding','IC'});
+b = bar(cat,[mean(aut1_path) mean(u1_fb_path) mean(u1_hide_path) mean(u1_ic_path)]);
+b.FaceColor = 'flat';
+b.CData(1,:) = [0.28 0.27 0.43];
+b.CData(2,:) = [0.24 0.52 0.66];
+b.CData(3,:) = [0.27 0.8 0.81];
+b.CData(4,:) = [0.67 0.93 0.85];
+title('Mean(U1)')
+ylim([-0.1 1])
+
+subplot(1,3,3);
+b = bar(cat,[mean(aut2_path) mean(u2_fb_path) mean(u2_hide_path) mean(u2_ic_path)]);
+b.FaceColor = 'flat';
+b.CData(1,:) = [0.28 0.27 0.43];
+b.CData(2,:) = [0.24 0.52 0.66];
+b.CData(3,:) = [0.27 0.8 0.81];
+b.CData(4,:) = [0.67 0.93 0.85];
+title('Mean(U2)')
+ylim([-0.1 1])
+
 %% Risk sharing graph
 figure;
 
@@ -487,9 +577,28 @@ b.CData(2,:) = [0.24 0.52 0.66];
 b.CData(3,:) = [0.27 0.8 0.81];
 title('Var(Q)')
 
+%% Inequality
+
+% sharing rule as a function of Pareto weight
+alpha_var = linspace(0.1,0.9,10);
+
+% first best: sharing rule = Pareto weight
+
+% hiding
+seed = 8;
+for i = 1:10
+    [s_hide(i), s_ic(i)] = simulation_func(seed,T,n,map,income1,income2,a1,a2,uaut1,uaut2,u1,u2,beta,alpha_var(i),delta1,delta2,price,z1max_bl,z2max_bl,P,w_feasible,X_all,ns,nfeas);
+end
+
+figure;
+plot(alpha_var,alpha_var,alpha_var,s_hide,alpha_var,s_ic);
+xlabel('Pareto Weight')
+ylabel('Sharing Rule')
+title('Mean Sharing Rule')
+legend('First Best','Hiding','IC','Location','Southeast')
 toc
 
-
+%{
 %% Utility as a function of cost of hiding
 
 % Hiding

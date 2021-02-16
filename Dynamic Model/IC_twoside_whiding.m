@@ -9,7 +9,7 @@
 % probability vector (see SL exercise 20.4 and Karaivanov's Matlab code for
 % moral hazard).
 
-function [w0, w_feasible, P, nfeas, X_all, ec1, ec2, eQ, eu1, eu2] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,ns,nw,delta1,delta2,punish)
+function [w_feasible, P, nfeas, X_all, ec1, ec2, eQ, eu1, eu2] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,beta,price,n,ns,nw,delta1,delta2,punish)
 
 %clear all; close all; clc;
 
@@ -256,11 +256,6 @@ while diff_feas>error
     pp = kron(ones(1, n*n*ns), P);
     
 end
-
-%% Use Pareto weight to find initial values
-% Maximize social planner's expected utility at period 0
-social_planner = alpha.*P + (1-alpha).*w_feasible;
-[w0, w0_index] = max(social_planner);
 
 %% Expected consumption
 ec1 = zeros(n,n,nfeas);
