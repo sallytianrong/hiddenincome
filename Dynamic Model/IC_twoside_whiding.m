@@ -9,12 +9,12 @@
 % probability vector (see SL exercise 20.4 and Karaivanov's Matlab code for
 % moral hazard).
 
-function [w_feasible, P, nfeas, X_all, ec1, ec2, eQ, eu1, eu2] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,beta,price,n,ns,nw,delta1,delta2,punish)
+%function [w_feasible, P, nfeas, X_all, ec1, ec2, eQ, eu1, eu2] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,beta,price,n,ns,nw,delta1,delta2,punish)
 
 %clear all; close all; clc;
 
 %% Parameters set-up
-%{
+%
 % discounting factor
 beta = 0.94;
 % preference of private consumption
@@ -23,9 +23,9 @@ a2 = 0.5;
 % price of public good
 price = 1;
 % number of gridpoints
-n = 2;
-ns = 20;
-nw = 20;
+n = 10;
+ns = 10;
+nw = 10;
 % income processes
 y1min = 1;
 y1max = 5;
@@ -45,9 +45,10 @@ punish = @(y, haty) ((y-haty)./y).^2;
 % utility function
 u1 = @(x,Q) a1.*log(x) + (1-a1).*log(Q);
 u2 = @(x,Q) a2.*log(x) + (1-a2).*log(Q);
-%u1 = @(x,Q) a1.*x + (1-a1).*Q;
-%u2 = @(x,Q) a2.*x + (1-a2).*Q;
 
+% indirect utility function
+v1 = @(x) a1.*log(a1) + (1-a1).*log(1-a1) + log(x) - (1-a1).*log(price);
+v2 = @(x) a2.*log(a2) + (1-a2).*log(1-a2) + log(x) - (1-a2).*log(price);
 
 %% Grid set-up for Y (income), S (Sharing rule) and W (continuation value)
 
@@ -286,13 +287,74 @@ for k = 1:nfeas
     end
 end
 
-%{
+%
 
-%% plot P function
+%% plot P function and bounds
+
+%{
+% lower bound: what is the constant transfer that agent 1 can offer to
+% agent 2 across all states?
+cons_trans = zeros(1,nfeas);
+% cons_trans: the constant transfer that agent 2 needs to receive in all
+% states in order to achieve the promised utility
+for i = 1:nfeas
+    cons_trans_test = @(x) v2(y2_grid + x)*prob_y2'./(1-beta) - w_feasible(i);
+    cons_trans(i) = fzero(cons_trans_test,1);
+end
+% agent 1 cannot transfer to agent 2 more than agent 1 is endowed. If
+% transfer is higher than agent 1's endowment at some states of the world,
+% agent 1 transfers as much as they can in the lower state and more in the
+% higher state.
+cons_trans_adj = (cons_trans > y1min);
+cons_trans_wadj = zeros(1,nfeas);
+for i = 1:nfeas
+    cons_trans_adj_test = @(x) sum(sum(v2(repmat(y2_grid,2,1) + repmat([y1min-0.01;x],1,2)).*(prob_y1'*prob_y2)))./(1-beta) - w_feasible(i);
+    cons_trans_wadj(i) = fzero(cons_trans_adj_test,2);
+end
+% combined transfer
+trans_lb = repmat(cons_trans,n,1);
+trans_lb(1,cons_trans_adj) = y1min-0.01;
+trans_lb(2,cons_trans_adj) = cons_trans_wadj(cons_trans_adj);
+% lower bound utility
+P_lb = sum(v1(y1_grid'-trans_lb).*prob_y1');
+
+% upper bound
+for i = 1:nfeas
+    cons_x_test = @(x) v2(x) - w_feasible(i).*(1-beta);
+    cons_x(i) = fzero(cons_x_test,3);
+end
+cons_x_trans = cons_x-y2_grid';
+P_ub = v1(y1_grid'-cons_x_trans)./(1-beta);
+
+% agent 1 keeps constant consumption?
+for i = 1:nfeas
+    cons_trans_adj_test = @(x) sum(sum(v2(repmat(y2_grid,2,1) + repmat([y1min-x;y1max-x],1,2)).*(prob_y1'*prob_y2)))./(1-beta) - w_feasible(i);
+    cons_trans_wadj(i) = fzero(cons_trans_adj_test,1);
+end
+%}
+
+% mdified hiding
+[u1_ic_lb, u2_ic_lb] = is_hiding_ic(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,delta1,delta2);
+u1_ic_flat = reshape(u1_ic_lb,1,[]);
+u2_ic_flat = reshape(u2_ic_lb,1,[]);
+u1_ic_flat = u1_ic_flat./(1-beta);
+u2_ic_flat = u2_ic_flat./(1-beta);
+mean(u1_ic_flat);
+mean(u2_ic_flat);
+
+% Maximize social planner's expected utility at period 0
+social_planner = alpha.*P + (1-alpha).*w_feasible;
+[w0, w_index] = max(social_planner);
+P0 = P(w_index);
+
 figure;
 plot(w_feasible,P);
+hold on
+plot(mean(u2_ic_flat),mean(u1_ic_flat),'r*');
+plot(w_feasible(w_index),P0,'g*');
 title('Agent 1 Utility as a Function of Agent 2 Utility');
 
+%{
 %% Display probabilities
 for i = 1:length(w_feasible)
     xp=find(X_all(:,i)>10^-4); %gives the indices of all elements of X > 10ˆ-4
@@ -301,7 +363,6 @@ for i = 1:length(w_feasible)
     disp('———————————————————')
     disp([yy1(xp)', yy2(xp)', cc1(xp)', cc2(xp)', QQ(xp)', ww(xp)', X_all(xp,i)]);
 end
-
 
 %% Calculate transition probabilities
 % for each promised utility value (this period)
