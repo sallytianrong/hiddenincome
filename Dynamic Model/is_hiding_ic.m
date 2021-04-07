@@ -4,7 +4,7 @@
 % apply, I want to solve for a hiding equilibrium, modify it to Pareto
 % efficient, and check whether that new allocation is incentive compatible.
 
-function [u1_ic, u2_ic] = is_hiding_ic(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,delta1,delta2)
+function [u1_pol, u2_pol, u1_ic, u2_ic] = is_hiding_ic(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,delta1,delta2)
 
 %clear all; close all; clc;
 
@@ -171,6 +171,8 @@ mean_c2_sharing = mean(mean(c2_sharing));
 % utility
 u1_pol = u1(income1_rep,z1max,z2max);
 u2_pol = u2(income2_rep,z1max,z2max);
+u1_pol_mean = mean(reshape(u1_pol,1,[])); 
+u2_pol_mean = mean(reshape(u2_pol,1,[])); 
 
 %% Modify the allocation to be Pareto efficient
 % hiding
@@ -191,8 +193,8 @@ mean_c2_ic_sharing = mean(mean(c2_ic_sharing));
 % utility
 u1_ic = a1.*log(c1_ic) + (1-a1).*log(Q);
 u2_ic = a2.*log(c2_ic) + (1-a2).*log(Q);
-u1_ic_flat = reshape(u1_ic,1,[]);
-u2_ic_flat = reshape(u2_ic,1,[]);
+u1_ic_mean = mean(reshape(u1_ic,1,[]));
+u2_ic_mean = mean(reshape(u2_ic,1,[]));
 
 %% Is the new allocation incentive compatible
 % agent 1
@@ -214,7 +216,7 @@ for i = 2:n
         end
     end
 end
-sum_ic1 = sum(ic1)
+sum_ic1 = sum(ic1);
 
 % agent 2
 counter = 1;
@@ -235,4 +237,4 @@ for i = 2:n
         end
     end
 end
-sum_ic2 = sum(ic2)
+sum_ic2 = sum(ic2);

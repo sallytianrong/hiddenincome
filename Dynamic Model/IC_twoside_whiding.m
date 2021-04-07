@@ -8,11 +8,14 @@
 % Within the inner loop, maximization is done using linprog with a
 % probability vector (see SL exercise 20.4 and Karaivanov's Matlab code for
 % moral hazard).
+% Apr 2021: trying to determine whether this code produces accurate
+% solutions
 
 %function [w_feasible, P, nfeas, X_all, ec1, ec2, eQ, eu1, eu2] = IC_twoside_whiding(a1,a2,y1min,y1max,y2min,y2max,beta,price,n,ns,nw,delta1,delta2,punish)
 
 %clear all; close all; clc;
 
+total_time = tic;
 %% Parameters set-up
 %
 % discounting factor
@@ -23,9 +26,9 @@ a2 = 0.5;
 % price of public good
 price = 1;
 % number of gridpoints
-n = 10;
-ns = 10;
-nw = 10;
+n = 5;
+ns = 20;
+nw = 40;
 % income processes
 y1min = 1;
 y1max = 5;
@@ -102,10 +105,12 @@ pp = kron(ones(1, n*n*ns), P);
 diff_feas = 100;
 error = 0.01;
 
+% outer counter
+counter = 0;
+
 while diff_feas>error
     
-    tic
-      
+    inner_time = tic;
     % vector to store optimization flags
     exitflag = ones(1,nfeas);
     
@@ -162,6 +167,9 @@ while diff_feas>error
             
     %% P function iteration
     diff = 100;
+    
+    % inner counter
+    inner_counter = 0;
     
     while diff>error
         % for each v
@@ -224,13 +232,14 @@ while diff_feas>error
         
         % Check convergence of P function
         diff = max(abs(P-P_update))
+        inner_counter = inner_counter+1
         
         % Update P function
         P = P_update;
         pp = kron(ones(1, n*n*ns), P);
     end
     
-    toc 
+    toc(inner_time) 
     
     %% Check feasibility
     % agent 1's participation constraint
@@ -243,19 +252,28 @@ while diff_feas>error
     else
         w_update = exitflag_feasible;
     end
-    
+    % end points
+    max_w_update = max(w_feasible(w_update));
+    [~, max_w_index] = min(abs(max_w_update-w_feasible));
+    min_w_update = min(w_feasible(w_update));
+    [~, min_w_index] = min(abs(min_w_update-w_feasible));
+
     % Check convergence of w-space
-    diff_feas = max(abs(w_update-1));
+    diff_feas = max(abs(max_w_update-max(w_feasible)),abs(min_w_update-min(w_feasible)))
     
-    % Update w-space
-    w_feasible = w_feasible(w_update);
-    nfeas = length(w_feasible);
+    % Update w-space and P
+    w_feasible_update = linspace(min_w_update,max_w_update,nw);
+    P = interp1(w_feasible(min_w_index:max_w_index),P(min_w_index:max_w_index),w_feasible_update);
     
-    % Update initial guess of P function
-    P = P(w_update);
+    w_feasible = w_feasible_update;
     P_update = P;
     pp = kron(ones(1, n*n*ns), P);
+    %w_feasible = w_feasible(w_update);
+    nfeas = length(w_feasible);
     
+    % update counter
+    counter = counter+1  
+
 end
 
 %% Expected consumption
@@ -288,6 +306,7 @@ for k = 1:nfeas
 end
 
 %
+total_time_end = toc(total_time)
 
 %% plot P function and bounds
 
@@ -334,13 +353,11 @@ end
 %}
 
 % mdified hiding
-[u1_ic_lb, u2_ic_lb] = is_hiding_ic(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,delta1,delta2);
-u1_ic_flat = reshape(u1_ic_lb,1,[]);
-u2_ic_flat = reshape(u2_ic_lb,1,[]);
-u1_ic_flat = u1_ic_flat./(1-beta);
-u2_ic_flat = u2_ic_flat./(1-beta);
-mean(u1_ic_flat);
-mean(u2_ic_flat);
+[u1_hiding, u2_hiding, u1_ic_lb, u2_ic_lb] = is_hiding_ic(a1,a2,y1min,y1max,y2min,y2max,alpha,beta,price,n,delta1,delta2);
+u1_ic_flat = reshape(u1_ic_lb,1,[])./(1-beta);
+u2_ic_flat = reshape(u2_ic_lb,1,[])./(1-beta);
+u1_hiding_flat = reshape(u1_hiding,1,[])./(1-beta);
+u2_hiding_flat = reshape(u2_hiding,1,[])./(1-beta);
 
 % Maximize social planner's expected utility at period 0
 social_planner = alpha.*P + (1-alpha).*w_feasible;
@@ -351,6 +368,7 @@ figure;
 plot(w_feasible,P);
 hold on
 plot(mean(u2_ic_flat),mean(u1_ic_flat),'r*');
+plot(mean(u2_hiding_flat),mean(u1_hiding_flat),'b*');
 plot(w_feasible(w_index),P0,'g*');
 title('Agent 1 Utility as a Function of Agent 2 Utility');
 
